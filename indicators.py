@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-# Author: Philipp Braun <braunphilipp@protonmail.com>
-
 
 """
 Indicator Toolset
