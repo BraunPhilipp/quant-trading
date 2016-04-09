@@ -106,12 +106,11 @@ data = pd.read_csv('USDCAD.csv')
 data.index = data['Date']
 data = data['Rate']
 
-print(ts.adfuller(data.values[-500:]))
-
+# print(ts.adfuller(data.values[-500:]))
 # h = hurst(data.values)
 # (h, d) = vratiotest(data.values, 3))
 # hl = halflife(data.values[1000:3000])
 
-# pnl = strategy(data.values[-1000:])
-# plt.plot(pnl)
-# plt.show()
+pnl = strategy(data.values[-2000:])
+plt.plot(pnl)
+plt.show()
