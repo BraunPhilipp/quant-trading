@@ -86,14 +86,32 @@ def halflife(ts):
 
 	return halflife
 
+def movingAvg(ts, lookback):
+    weights = np.repeat(1.0, lookback)/lookback
+    sma = np.convolve(ts, weights, 'valid')
+    return sma
+
+def strategy(ts):
+	lookback = halflife(ts)
+	sma = np.array(movingAvg(ts, lookback))
+	sms = np.std(sma)
+
+	mktVal = -(ts[lookback-1:]-sma)/sms
+	pnl = mktVal[:-1] * (ts[1+lookback-1:]-ts[lookback-1:-1])/(ts[lookback-1:-1])
+
+	return pnl
+
 # Get Data
 data = pd.read_csv('USDCAD.csv')
 data.index = data['Date']
 data = data['Rate']
 
-#print(ts.adfuller(data.values))
+print(ts.adfuller(data.values[-500:]))
 
-#h = hurst(data.values)
-#(h, d) = vratiotest(data.values, 3))
+# h = hurst(data.values)
+# (h, d) = vratiotest(data.values, 3))
+# hl = halflife(data.values[1000:3000])
 
-print(halflife(data.values[1000:3000]))
+# pnl = strategy(data.values[-1000:])
+# plt.plot(pnl)
+# plt.show()
