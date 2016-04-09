@@ -9,6 +9,10 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import math
 
+from yahoo_finance import Share
+
+import pickle
+
 def hurst(ts):
 	"""
     Returns the Hurst Exponent of a time series vector ts
@@ -92,25 +96,68 @@ def movingAvg(ts, lookback):
     return sma
 
 def strategy(ts):
-	lookback = halflife(ts)
+	lookback = math.ceil(halflife(ts))
 	sma = np.array(movingAvg(ts, lookback))
 	sms = np.std(sma)
 
 	mktVal = -(ts[lookback-1:]-sma)/sms
 	pnl = mktVal[:-1] * (ts[1+lookback-1:]-ts[lookback-1:-1])/(ts[lookback-1:-1])
-
+	pnl = np.cumprod(pnl+1)
+	pnl = pnl - 1
 	return pnl
 
-# Get Data
-data = pd.read_csv('USDCAD.csv')
-data.index = data['Date']
-data = data['Rate']
+def cadf(y, x):
+	param0 = np.ones(len(x))
+	param1 = x
+	params = np.array( list(zip(param0,param1)) )
+	# OLS
+	mod = sm.OLS(y, params).fit()
+	# Stationarity
+	st = y - mod.params[1] * param1
+	print(ts.adfuller(st))
 
+# # Get Data
+# data = pd.read_csv('USDCAD.csv')
+# data.index = data['Date']
+# data = data['Rate']
+
+# # Stationarity Tests
 # print(ts.adfuller(data.values[-500:]))
 # h = hurst(data.values)
 # (h, d) = vratiotest(data.values, 3))
 # hl = halflife(data.values[1000:3000])
 
-pnl = strategy(data.values[-2000:])
-plt.plot(pnl)
-plt.show()
+# # Strategy
+# pnl = strategy(data.values[-2000:])
+# plt.plot(pnl)
+# plt.show()
+
+# # Get Data
+# ewa = Share('EWA')
+# x = pd.DataFrame(ewa.get_historical('2006-01-01', '2016-01-01'))
+# x.index = x['Date']
+# x = x['Adj_Close']
+#
+# ewc = Share('EWC')
+# y = pd.DataFrame(ewc.get_historical('2006-01-01', '2016-01-01'))
+# y.index = y['Date']
+# y = y['Adj_Close']
+#
+# with open('ewa.pickle','wb') as f:
+#     pickle.dump(x.values, f)
+#
+# with open('ewc.pickle','wb') as f:
+# 	pickle.dump(y.values, f)
+
+# # Plot
+# plt.plot(x,y,'bo')
+# plt.plot(x,y_hat,'-r')
+# plt.xlabel('EWA share price')
+# plt.ylabel('EWC share price')
+# plt.show()
+
+# Load Data
+x = np.array(list(map(float, pickle.load(open('ewa.pickle', 'rb')))))
+y = np.array(list(map(float, pickle.load(open('ewc.pickle', 'rb')))))
+
+cadf(y,x)
