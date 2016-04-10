@@ -5,6 +5,7 @@ from scipy.stats import norm
 
 import statsmodels.tsa.stattools as ts
 import statsmodels.api as sm
+from johansen import coint_johansen
 
 import matplotlib.pyplot as plt
 import math
@@ -26,54 +27,34 @@ def hurst(ts):
 	# Return the Hurst exponent from the polyfit output
 	return poly[0]*2.0
 
-def vratiotest(ts, k):
-	"""
-	Performs variance ratio test on ts
-	Returns (h, pValue)
-	h=1 means rejection of the random walk hypothesis ( prob. > 90 percent )
+def vratio(ts, lag = 2, cor = 'hom'):
+    n = len(ts)
+    mu  = sum(ts[1:n]-ts[:n-1])/n;
+    m=(n-lag+1)*(1-lag/n);
+    #print( mu, m, lag)
+    b=sum(square(ts[1:n]-ts[:n-1]-mu))/(n-1)
+    t=sum(square(ts[lag:n]-ts[:n-lag]-lag*mu))/m
+    vratio = t/(lag*b);
 
-	The algorithm below is adapted from the matlab code below.
-	http://www.mathworks.com/matlabcentral/fileexchange/8489-variance-ratio-test/content/varatio.m
-    """
-	# Calculate one perios return series parameters
-	ts = np.log(ts)
-	rt1 = np.subtract(ts[1:], ts[:-1])
-	T = len(rt1)
-	mu = np.mean(rt1)
-	v = np.var(rt1)
-	# k periods rate of return series
-	M = []
-	for j in np.arange(0, k):
-		# Create lagged rows
-		tmp = []
-		for i in np.arange(0, T-k+1):
-			tmp.append(rt1[i+j])
-		M.append(tmp)
-	rtk = np.sum(M, axis=0)
-	# Vriance ratio statistic
-	m = k*(T-k+1)*(1-k/T);
-	VR = 1/m*np.sum(np.square(rtk-k*mu))/v;
-	# Homoskedastic statistic
-	Zk = np.sqrt(T)*(VR-1)*(1/np.sqrt(2*(2*k-1)*(k-1)/(3*k)));
-	# Heteroskedastic statistic
-	j = np.array([ i for i in np.arange(1, k) ])
-	vec1 = np.square((2/k*(k-j)));
-	rst = np.square((rt1-mu));
-	aux = []
-	for i in np.arange(0, k-1):
-		aux.append(np.dot(rst[i+1:T], rst[1:T-i]))
-	vec2 = aux/np.square(((T-1)*v));
-	Zhk = (VR-1)*(1/np.sqrt(np.dot(vec1,vec2)))
-	# Calculate p-Values
-	p_Zk = norm.cdf([-np.absolute(Zk), np.absolute(Zk)], 0, 1)
-	p_Zk = 1 - (p_Zk[1] - p_Zk[0])
-	p_Zhk = norm.cdf([-np.absolute(Zhk), np.absolute(Zhk)], 0, 1)
-	p_Zhk = 1 - (p_Zhk[1] - p_Zhk[0])
+    la = float(lag)
 
-	if (p_Zhk > 0.05):
-		return (0, p_Zhk)
-	else:
-		return (1, p_Zhk)
+    if cor == 'hom':
+        varvrt=2*(2*la-1)*(la-1)/(3*la*n)
+
+    elif cor == 'het':
+        varvrt=0;
+        sum2=sum(square(a[1:n]-a[:n-1]-mu));
+        for j in range(lag-1):
+            sum1a=square(a[j+1:n]-a[j:n-1]-mu);
+            sum1b=square(a[1:n-j]-a[0:n-j-1]-mu)
+            sum1=dot(sum1a,sum1b);
+            delta=sum1/(sum2**2);
+            varvrt=varvrt+((2*(la-j)/la)**2)*delta
+
+    zscore = (vratio - 1) / sqrt(float(varvrt))
+    pval = normcdf(zscore);
+
+    return  vratio, zscore, pval
 
 def halflife(ts):
 	# Lag variables
@@ -160,4 +141,6 @@ def cadf(y, x):
 x = np.array(list(map(float, pickle.load(open('ewa.pickle', 'rb')))))
 y = np.array(list(map(float, pickle.load(open('ewc.pickle', 'rb')))))
 
-cadf(y,x)
+#cadf(y,x)
+y = pd.DataFrame({'col1': x, 'col2': y})
+coint_johansen(y, 0, 1)
