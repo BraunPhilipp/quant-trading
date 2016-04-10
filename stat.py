@@ -14,6 +14,8 @@ from yahoo_finance import Share
 
 import pickle
 
+from numpy.matlib import repmat
+
 def hurst(ts):
 	"""
     Returns the Hurst Exponent of a time series vector ts
@@ -69,17 +71,17 @@ def halflife(ts):
 	mod = sm.OLS(delta_y, params).fit()
 	halflife = -math.log(2)/mod.params[1]
 
-	return halflife
+	# delta_ts = np.diff(ts)
+	# lag_ts = np.transpose(np.vstack([ts[1:], np.ones(len(ts[1:]))]))
+	# mod = sm.OLS(lag_ts, delta_ts).fit()
+	# half_life = math.log(2) / mod.params[0]
 
-def movingAvg(ts, lookback):
-    weights = np.repeat(1.0, lookback)/lookback
-    sma = np.convolve(ts, weights, 'valid')
-    return sma
+	return halflife
 
 def strategy(ts):
 	lookback = math.ceil(halflife(ts))
-	sma = np.array(movingAvg(ts, lookback))
-	sms = np.std(sma)
+	sma = pd.rolling_mean(ts, window=lookback)
+	sms = pd.rolling_std(ts, window=lookback)
 
 	mktVal = -(ts[lookback-1:]-sma)/sms
 	pnl = mktVal[:-1] * (ts[1+lookback-1:]-ts[lookback-1:-1])/(ts[lookback-1:-1])
@@ -142,5 +144,30 @@ x = np.array(list(map(float, pickle.load(open('ewa.pickle', 'rb')))))
 y = np.array(list(map(float, pickle.load(open('ewc.pickle', 'rb')))))
 
 #cadf(y,x)
+
 y = pd.DataFrame({'col1': x, 'col2': y})
-coint_johansen(y, 0, 1)
+results = coint_johansen(y, 0, 1)
+# Take first egienvector strongest relationship
+w = results.evec[:, 0]
+yport = pd.DataFrame.sum(w*y, axis=1).values
+lookback = int(halflife(yport))
+
+moving_mean = pd.rolling_mean(yport, window=lookback)
+moving_std = pd.rolling_std(yport, window=lookback)
+# Number of units in unit portfolio equal to negative z-score (unit portfolio)
+z_score = (yport - moving_mean) / moving_std
+numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
+
+# Calculate P&L
+AA = repmat(numunits,1,2)
+BB = np.multiply(repmat(w,len(y),1), y)
+position = pd.DataFrame(np.multiply(AA, BB))
+
+pnl = np.sum(np.divide(np.multiply(position[:-1],np.diff(y,axis = 0)), y[:-1]),1)
+# gross market value of portfolio
+mrk_val = pd.DataFrame.sum(np.absolute(position), axis=1)
+# return is P&L divided by gross market value of portfolio
+rtn = np.cumsum(pd.DataFrame(pnl/mrk_val, columns=['rtn']))
+
+plt.plot(rtn)
+plt.show()
