@@ -89,7 +89,7 @@ def strategy(ts):
 	pnl = pnl - 1
 	return pnl
 
-def cadf(y, x):
+def cadf(x, y):
 	param0 = np.ones(len(x))
 	param1 = x
 	params = np.array( list(zip(param0,param1)) )
@@ -99,75 +99,77 @@ def cadf(y, x):
 	st = y - mod.params[1] * param1
 	print(ts.adfuller(st))
 
+def strategy2(x, y):
+	y = pd.DataFrame({'col1': x, 'col2': y})
+	results = coint_johansen(y, 0, 1)
+	# Take first egienvector strongest relationship
+	w = results.evec[:, 0]
+	yport = pd.DataFrame.sum(w*y, axis=1).values
+	lookback = int(halflife(yport))
+
+	moving_mean = pd.rolling_mean(yport, window=lookback)
+	moving_std = pd.rolling_std(yport, window=lookback)
+	# Number of units in unit portfolio equal to negative z-score (unit portfolio)
+	z_score = (yport - moving_mean) / moving_std
+	numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
+
+	# Calculate P&L
+	AA = repmat(numunits,1,2)
+	BB = np.multiply(repmat(w,len(y),1), y)
+	position = pd.DataFrame(np.multiply(AA, BB))
+
+	pnl = np.sum(np.divide(np.multiply(position[:-1],np.diff(y,axis = 0)), y[:-1]),1)
+	# gross market value of portfolio
+	mrk_val = pd.DataFrame.sum(np.absolute(position), axis=1)
+	# return is P&L divided by gross market value of portfolio
+	rtn = np.cumsum(pd.DataFrame(pnl/mrk_val, columns=['rtn']))
+
+	plt.plot(rtn)
+	plt.show()
+
+def data():
+	# Get Data
+	ewa = Share('USO')
+	x = pd.DataFrame(ewa.get_historical('2007-01-01', '2016-01-01'))
+	x.index = x['Date']
+	x = x['Adj_Close']
+
+	ewc = Share('GLD')
+	y = pd.DataFrame(ewc.get_historical('2007-01-01', '2016-01-01'))
+	y.index = y['Date']
+	y = y['Adj_Close']
+
+	with open('uso.pickle','wb') as f:
+	    pickle.dump(x, f)
+
+	with open('gld.pickle','wb') as f:
+		pickle.dump(y, f)
+
+	# Plot
+	plt.plot(x,y,'bo')
+	plt.plot(x,y_hat,'-r')
+	plt.xlabel('EWA share price')
+	plt.ylabel('EWC share price')
+	plt.show()
+
+	# # Load Data
+	# x = np.array(list(map(float, pickle.load(open('ewa.pickle', 'rb')))))
+	# y = np.array(list(map(float, pickle.load(open('ewc.pickle', 'rb')))))
+
 # # Get Data
 # data = pd.read_csv('USDCAD.csv')
 # data.index = data['Date']
 # data = data['Rate']
-
+#
 # # Stationarity Tests
 # print(ts.adfuller(data.values[-500:]))
 # h = hurst(data.values)
 # (h, d) = vratiotest(data.values, 3))
 # hl = halflife(data.values[1000:3000])
-
+#
 # # Strategy
 # pnl = strategy(data.values[-2000:])
 # plt.plot(pnl)
 # plt.show()
 
-# # Get Data
-# ewa = Share('EWA')
-# x = pd.DataFrame(ewa.get_historical('2006-01-01', '2016-01-01'))
-# x.index = x['Date']
-# x = x['Adj_Close']
-#
-# ewc = Share('EWC')
-# y = pd.DataFrame(ewc.get_historical('2006-01-01', '2016-01-01'))
-# y.index = y['Date']
-# y = y['Adj_Close']
-#
-# with open('ewa.pickle','wb') as f:
-#     pickle.dump(x.values, f)
-#
-# with open('ewc.pickle','wb') as f:
-# 	pickle.dump(y.values, f)
-
-# # Plot
-# plt.plot(x,y,'bo')
-# plt.plot(x,y_hat,'-r')
-# plt.xlabel('EWA share price')
-# plt.ylabel('EWC share price')
-# plt.show()
-
-# Load Data
-x = np.array(list(map(float, pickle.load(open('ewa.pickle', 'rb')))))
-y = np.array(list(map(float, pickle.load(open('ewc.pickle', 'rb')))))
-
-#cadf(y,x)
-
-y = pd.DataFrame({'col1': x, 'col2': y})
-results = coint_johansen(y, 0, 1)
-# Take first egienvector strongest relationship
-w = results.evec[:, 0]
-yport = pd.DataFrame.sum(w*y, axis=1).values
-lookback = int(halflife(yport))
-
-moving_mean = pd.rolling_mean(yport, window=lookback)
-moving_std = pd.rolling_std(yport, window=lookback)
-# Number of units in unit portfolio equal to negative z-score (unit portfolio)
-z_score = (yport - moving_mean) / moving_std
-numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
-
-# Calculate P&L
-AA = repmat(numunits,1,2)
-BB = np.multiply(repmat(w,len(y),1), y)
-position = pd.DataFrame(np.multiply(AA, BB))
-
-pnl = np.sum(np.divide(np.multiply(position[:-1],np.diff(y,axis = 0)), y[:-1]),1)
-# gross market value of portfolio
-mrk_val = pd.DataFrame.sum(np.absolute(position), axis=1)
-# return is P&L divided by gross market value of portfolio
-rtn = np.cumsum(pd.DataFrame(pnl/mrk_val, columns=['rtn']))
-
-plt.plot(rtn)
-plt.show()
+# data()
