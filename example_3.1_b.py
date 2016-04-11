@@ -17,18 +17,17 @@ y.rename(columns={'Adj_Close':'y'}, inplace=True)
 
 data = x
 data['y'] = y.values
-data = data.apply(np.log)
 
 x = data['x']
 y = data['y']
 
 # Calculate Beta
 lookback = 20
-mod = pd.ols(y=y, x=x, window_type='rolling', window=lookback)
+mod = pd.ols(y=np.log(y), x=np.log(x), window_type='rolling', window=lookback)
 data = data[lookback-1:]
 betas = mod.beta
 # Portfolio
-yport = pd.DataFrame(data['y'] - (betas['x'] * data['x']))
+yport = pd.DataFrame(np.log(data['y']) - (betas['x'] * np.log(data['x'])))
 # Moving average and standard deviation
 moving_mean = pd.rolling_mean(yport, window=lookback)
 moving_std = pd.rolling_std(yport, window=lookback)
