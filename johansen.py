@@ -99,7 +99,7 @@ def resid(y, x):
 
 
 
-def coint_johansen(x, p, k, print_on_console=True):
+def coint_johansen(x, p, k, print_on_console=False):
 
     #    % error checking on inputs
     #    if (nargin ~= 3)

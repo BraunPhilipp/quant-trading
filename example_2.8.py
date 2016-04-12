@@ -10,6 +10,7 @@ from johansen import coint_johansen
 from yahoo_finance import Share
 
 from functions import *
+from pykalman import KalmanFilter
 
 import pickle
 
@@ -17,11 +18,13 @@ start = '2007-01-01'
 end = '2016-01-01'
 
 # XOP IEO PXE
-x_ticket = 'XOP'
-y_ticket = 'IEO'
-z_ticket = 'PXE'
+#"XLK", "VGT", "XLV"
+x_ticket = 'XLK'
+y_ticket = 'VGT'
+z_ticket = 'XLV'
 
 entryZscore = 0.42
+#entryZscore = 0.001
 exitZscore = 0
 
 # # Get Data
@@ -58,8 +61,23 @@ yport = pd.DataFrame.sum(w*y, axis=1).values
 #lookback = int(halflife(yport))
 lookback = 20
 
+print(w)
+
 moving_mean = pd.rolling_mean(yport, window=lookback)
 moving_std = pd.rolling_std(yport, window=lookback)
+
+# kf = KalmanFilter(transition_matrices = [1],
+#                   observation_matrices = [1],
+#                   initial_state_mean = 0,
+#                   initial_state_covariance = 1,
+#                   observation_covariance=1,
+#                   transition_covariance=.01)
+#
+# moving_mean, _ = kf.filter(yport)
+# moving_mean = np.transpose(moving_mean)[0]
+# moving_std = np.std(moving_mean)
+
+# print(moving_std)
 
 # Number of units in unit portfolio equal to negative z-score (unit portfolio)
 zscore = (yport - moving_mean) / moving_std
@@ -67,9 +85,9 @@ zscore = (yport - moving_mean) / moving_std
 #numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
 
 long_entry = zscore < -entryZscore
-long_exit = zscore >= -entryZscore
+long_exit = zscore >= -exitZscore
 short_entry = zscore > entryZscore
-short_exit = zscore <= entryZscore
+short_exit = zscore <= exitZscore
 
 numunits_long= np.zeros((len(yport),1))
 numunits_long = pd.DataFrame(np.where(long_entry,1,0))
