@@ -7,16 +7,26 @@ import math
 import pickle
 from numpy.matlib import repmat
 
-# Load Data
-x = pd.DataFrame(pickle.load(open('uso.pickle', 'rb')))
-x['Adj_Close'] = [float(i[0]) for i in x.values]
-x.rename(columns={'Adj_Close':'x'}, inplace=True)
-y = pd.DataFrame(pickle.load(open('gld.pickle', 'rb')))
-y['Adj_Close'] = [float(i[0]) for i in y.values]
-y.rename(columns={'Adj_Close':'y'}, inplace=True)
+from yahoo_finance import Share
 
-data = x
-data['y'] = y.values
+start = '2007-01-01'
+end = '2016-01-01'
+
+# XOP IEO PXE
+
+x_ticket = 'IEO'
+y_ticket = 'XOP'
+
+# Get Data
+x = Share(x_ticket)
+x = pd.DataFrame(x.get_historical(start, end))['Adj_Close']
+x = list(map(float, x.values))
+
+y = Share(y_ticket)
+y = pd.DataFrame(y.get_historical(start, end))['Adj_Close']
+y = list(map(float, y.values))
+
+data = pd.DataFrame({'x':x, 'y':y})
 
 x = data['x']
 y = data['y']
@@ -53,10 +63,11 @@ APR = np.prod(1+rtn)**(252/len(rtn))-1
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.plot(np.cumsum(rtn))
-ax.set_title('{}-{} Price Spread Acum Return'.format('x', 'y'))
+ax.set_title('{}-{} Price Spread Acum Return'.format(x_ticket, y_ticket))
 ax.set_xlabel('Data points')
 ax.set_ylabel('acumm rtn')
 ax.text(1000, 0, 'Sharpe: {:.4}'.format(sharpe))
 ax.text(1000, -0.03, 'APR: {:.4%}'.format(APR))
 
 plt.show()
+plt.close()

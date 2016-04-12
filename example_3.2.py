@@ -7,22 +7,44 @@ import math
 import pickle
 from numpy.matlib import repmat
 
-# Load Data
-x = pd.DataFrame(pickle.load(open('uso.pickle', 'rb')))
-x['Adj_Close'] = [float(i[0]) for i in x.values]
-x.rename(columns={'Adj_Close':'x'}, inplace=True)
-y = pd.DataFrame(pickle.load(open('gld.pickle', 'rb')))
-y['Adj_Close'] = [float(i[0]) for i in y.values]
-y.rename(columns={'Adj_Close':'y'}, inplace=True)
+from yahoo_finance import Share
 
-data = x
-data['y'] = y.values
+start = '2007-01-01'
+end = '2016-01-01'
+
+x_ticket = 'GLD'
+y_ticket = 'GDX'
+
+# Get Data
+x = Share(x_ticket)
+x = pd.DataFrame(x.get_historical(start, end))['Adj_Close']
+x = list(map(float, x.values))
+
+y = Share(y_ticket)
+y = pd.DataFrame(y.get_historical(start, end))['Adj_Close']
+y = list(map(float, y.values))
+
+data = pd.DataFrame({'x':x, 'y':y})
 
 x = data['x']
 y = data['y']
 
+# # Load Data
+# x = pd.DataFrame(pickle.load(open('uso.pickle', 'rb')))
+# x['Adj_Close'] = [float(i[0]) for i in x.values]
+# x.rename(columns={'Adj_Close':'x'}, inplace=True)
+# y = pd.DataFrame(pickle.load(open('gld.pickle', 'rb')))
+# y['Adj_Close'] = [float(i[0]) for i in y.values]
+# y.rename(columns={'Adj_Close':'y'}, inplace=True)
+#
+# data = x
+# data['y'] = y.values
+#
+# x = data['x']
+# y = data['y']
+
 entryZscore = 1
-exitZscore = 1
+exitZscore = 0
 
 # Calculate Beta
 lookback = 20

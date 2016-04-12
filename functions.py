@@ -76,7 +76,7 @@ def halflife(ts):
 	# mod = sm.OLS(lag_ts, delta_ts).fit()
 	# half_life = math.log(2) / mod.params[0]
 
-	return halflife
+	return int(halflife)
 
 def strategy(ts):
 	lookback = math.ceil(halflife(ts))
@@ -98,34 +98,6 @@ def cadf(x, y):
 	# Stationarity
 	st = y - mod.params[1] * param1
 	print(ts.adfuller(st))
-
-def strategy2(x, y):
-	y = pd.DataFrame({'col1': x, 'col2': y})
-	results = coint_johansen(y, 0, 1)
-	# Take first egienvector strongest relationship
-	w = results.evec[:, 0]
-	yport = pd.DataFrame.sum(w*y, axis=1).values
-	lookback = int(halflife(yport))
-
-	moving_mean = pd.rolling_mean(yport, window=lookback)
-	moving_std = pd.rolling_std(yport, window=lookback)
-	# Number of units in unit portfolio equal to negative z-score (unit portfolio)
-	z_score = (yport - moving_mean) / moving_std
-	numunits = pd.DataFrame(z_score * -1, columns=['numunits'])
-
-	# Calculate P&L
-	AA = repmat(numunits,1,2)
-	BB = np.multiply(repmat(w,len(y),1), y)
-	position = pd.DataFrame(np.multiply(AA, BB))
-
-	pnl = np.sum(np.divide(np.multiply(position[:-1],np.diff(y,axis = 0)), y[:-1]),1)
-	# gross market value of portfolio
-	mrk_val = pd.DataFrame.sum(np.absolute(position), axis=1)
-	# return is P&L divided by gross market value of portfolio
-	rtn = np.cumsum(pd.DataFrame(pnl/mrk_val, columns=['rtn']))
-
-	plt.plot(rtn)
-	plt.show()
 
 def data():
 	# Get Data
@@ -173,3 +145,11 @@ def data():
 # plt.show()
 
 # data()
+
+# # Load Data
+# x = pd.DataFrame(pickle.load(open('uso.pickle', 'rb')))
+# x['Adj_Close'] = [float(i[0]) for i in x.values]
+# x.rename(columns={'Adj_Close':'x'}, inplace=True)
+# y = pd.DataFrame(pickle.load(open('gld.pickle', 'rb')))
+# y['Adj_Close'] = [float(i[0]) for i in y.values]
+# y.rename(columns={'Adj_Close':'y'}, inplace=True)
